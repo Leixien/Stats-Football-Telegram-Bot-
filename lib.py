@@ -4,7 +4,7 @@ import time
 import statistics
 
 # API-Football Config
-API_KEY = "YOUR_API_KEY"  # Inserisci la tua chiave API-Football qui
+API_KEY = "d736505941c5a75742a2358d062c4d7f"  # Inserisci la tua chiave API-Football qui
 BASE_URL = "https://v3.football.api-sports.io/"
 HEADERS = {
     "x-rapidapi-host": "v3.football.api-sports.io",
@@ -70,14 +70,44 @@ def get_first_half_stats(team_id):
         logging.error(f"Errore nell'API: {e}")
         return 0, 0
 
-# Funzione per calcolare probabilità Over 1.5
+def get_h2h_stats(team1_id, team2_id):
+    try:
+        print(f"[DEBUG] Recupero statistiche H2H tra {team1_id} e {team2_id}")
+        response = requests.get(f"{BASE_URL}fixtures/headtohead?h2h={team1_id}-{team2_id}", headers=HEADERS)
+        h2h_data = response.json().get("response", [])
+
+        if not h2h_data:
+            print("[DEBUG] Nessuna partita H2H trovata.")
+            return 0, 0
+
+        goals_first_half = []
+        over_1_5_first_half = 0
+
+        for match in h2h_data:
+            stats = match.get("score", {}).get("halftime", {})
+            if stats:
+                home_goals = stats.get("home", 0) or 0
+                away_goals = stats.get("away", 0) or 0
+                total_goals = home_goals + away_goals
+                goals_first_half.append(total_goals)
+                if total_goals > 1.5:
+                    over_1_5_first_half += 1
+
+        avg_goals_h2h = statistics.mean(goals_first_half) if goals_first_half else 0
+        over_1_5_percentage_h2h = (over_1_5_first_half / len(goals_first_half)) * 100 if goals_first_half else 0
+        print(f"[DEBUG] Statistiche H2H calcolate: {avg_goals_h2h} avg goals, {over_1_5_percentage_h2h}% over 1.5")
+        return avg_goals_h2h, over_1_5_percentage_h2h
+    except Exception as e:
+        print(f"[ERROR] Errore nell'API H2H: {e}")
+        return 0, 0
+
 def calculate_probability(match_id):
     try:
-        logging.info(f"Calcolo probabilità per Match ID: {match_id}")
-        response = make_request_with_retry(f"{BASE_URL}fixtures?id={match_id}", HEADERS)
+        print(f"[DEBUG] Calcolo probabilità per Match ID: {match_id}")
+        response = requests.get(f"{BASE_URL}fixtures?id={match_id}", headers=HEADERS)
         fixture_data = response.json().get("response", [])
         if not fixture_data:
-            logging.error("Nessuna informazione sulla partita trovata.")
+            print("[ERROR] Nessuna informazione sulla partita trovata.")
             return 0, {}
 
         fixture_data = fixture_data[0]
@@ -86,11 +116,19 @@ def calculate_probability(match_id):
         home_team_id = fixture_data["teams"]["home"]["id"]
         away_team_id = fixture_data["teams"]["away"]["id"]
 
+        # Statistiche primo tempo per entrambe le squadre
         home_avg_goals, home_over_1_5 = get_first_half_stats(home_team_id)
         away_avg_goals, away_over_1_5 = get_first_half_stats(away_team_id)
 
-        combined_avg_goals = (home_avg_goals + away_avg_goals) / 2
-        combined_over_1_5 = (home_over_1_5 + away_over_1_5) / 2
+        # Statistiche H2H
+        h2h_avg_goals, h2h_over_1_5 = get_h2h_stats(home_team_id, away_team_id)
+
+        # Gestione fallback se H2H non ha dati
+        if h2h_avg_goals == 0 and h2h_over_1_5 == 0:
+            print("[DEBUG] Nessun dato H2H disponibile, basato solo su statistiche squadra.")
+
+        combined_avg_goals = (home_avg_goals + away_avg_goals + h2h_avg_goals) / 3
+        combined_over_1_5 = (home_over_1_5 + away_over_1_5 + h2h_over_1_5) / 3
         probability = (combined_avg_goals / 1.5) * combined_over_1_5
 
         details = {
@@ -100,10 +138,13 @@ def calculate_probability(match_id):
             "away_avg_goals": away_avg_goals,
             "home_over_1_5": home_over_1_5,
             "away_over_1_5": away_over_1_5,
+            "h2h_avg_goals": h2h_avg_goals,
+            "h2h_over_1_5": h2h_over_1_5,
         }
 
-        logging.info(f"Dettagli calcolo: {details}")
+        print(f"[DEBUG] Dettagli calcolo: {details}")
         return min(probability, 100), details
     except Exception as e:
-        logging.error(f"Errore nel calcolo della probabilità: {e}")
+        print(f"[ERROR] Errore nel calcolo della probabilità: {e}")
         return 0, {}
+
