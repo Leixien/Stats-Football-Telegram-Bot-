@@ -14,10 +14,11 @@ logging.basicConfig(
 )
 
 # Bot Telegram Config
-BOT_TOKEN = "BOT_TOKEN"  # Inserisci il tuo token Telegram qui
+BOT_TOKEN = "7620362203:AAG7kyvMbum0gRkJjYpj-wvpy4s0bXGLaYQ"  # Inserisci il tuo token Telegram qui
 
 # Comando /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    logging.info("Comando /start ricevuto")
     await update.message.reply_text("Benvenuto! Inserisci il nome della squadra per iniziare.")
 
 # Gestore per il nome della squadra
@@ -60,25 +61,23 @@ async def match_callback_handler(update: Update, context: ContextTypes.DEFAULT_T
         logging.info(f"Dettagli probabilità: {details}")
 
         if not details:
-            await query.edit_message_text("⚠️ Errore nell'ottenere i dettagli della partita. Riprova più tardi.")
+            await query.edit_message_text(
+                "⚠️ Dettagli non disponibili per questa partita. Riprova più tardi."
+            )
             return
 
         message = (
             f"📊 **Analisi della partita**:\n\n"
             f"🏠 **Squadra Casa**: {details['home_team']}\n"
             f"🏟️ **Squadra Ospite**: {details['away_team']}\n\n"
-            f"⚽ **Media Gol Primo Tempo**:\n"
-            f"   - Casa: {details['home_avg_goals']:.2f}\n"
-            f"   - Ospite: {details['away_avg_goals']:.2f}\n\n"
-            f"📈 **Percentuale Over 1.5 Primo Tempo**:\n"
-            f"   - Casa: {details['home_over_1_5']:.2f}%\n"
-            f"   - Ospite: {details['away_over_1_5']:.2f}%\n\n"
-            f"🤝 **Scontri Diretti (H2H)**:\n"
-            f"   - Media Gol Primo Tempo: {details['h2h_avg_goals']:.2f}\n"
-            f"   - Percentuale Over 1.5 Primo Tempo: {details['h2h_over_1_5']:.2f}%\n\n"
+            f"⚽ **Statistiche H2H**:\n"
+            f"   - Partite giocate: {details.get('games_played', 0)}\n"
+            f"   - Media gol primo tempo: {details['h2h_avg_goals']:.2f}\n"
+            f"   - Percentuale Over 1.5: {details['h2h_over_1_5']:.2f}%\n\n"
             f"🔮 **Probabilità Over 1.5 Gol Primo Tempo**: {probability:.2f}%"
         )
         await query.edit_message_text(text=message, parse_mode="Markdown")
+
     except Exception as e:
         logging.error(f"Errore durante il calcolo della probabilità: {e}")
         await query.edit_message_text("⚠️ Si è verificato un errore durante il calcolo della probabilità. Riprova più tardi.")

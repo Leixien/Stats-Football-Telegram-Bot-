@@ -4,7 +4,7 @@ import time
 import statistics
 
 # API-Football Config
-API_KEY = "API_KEY"  # Inserisci la tua chiave API-Football qui
+API_KEY = "8cf8f82aa36916735cdd00c2a046abd2"  # Inserisci la tua chiave API-Football qui
 BASE_URL = "https://v3.football.api-sports.io/"
 HEADERS = {
     "x-rapidapi-host": "v3.football.api-sports.io",
@@ -94,75 +94,61 @@ def get_first_half_stats(team_id):
 
 def get_h2h_stats(team1_id, team2_id):
     try:
-        print(f"[DEBUG] Recupero statistiche H2H tra {team1_id} e {team2_id}")
+        logging.info(f"Recupero statistiche H2H tra {team1_id} e {team2_id}")
         response = requests.get(f"{BASE_URL}fixtures/headtohead?h2h={team1_id}-{team2_id}", headers=HEADERS)
         h2h_data = response.json().get("response", [])
 
         if not h2h_data:
-            print("[DEBUG] Nessuna partita H2H trovata.")
-            return {}
+            logging.info("Nessuna partita H2H trovata.")
+            return {
+                "games_played": 0,
+                "h2h_avg_goals": 0,
+                "h2h_over_1_5": 0
+            }
 
-        stats = {
-            "games_played": len(h2h_data),
-            "goals_scored_first_half": [],
-            "goals_scored_second_half": [],
-            "goals_conceded_first_half": [],
-            "goals_conceded_second_half": [],
-            "at_least_one_goal_scored": 0,
-            "at_least_one_goal_scored_first_half": 0,
-            "at_least_one_goal_scored_second_half": 0,
-            "at_least_one_goal_conceded_first_half": 0,
-            "at_least_one_goal_conceded_second_half": 0,
-        }
+        total_goals_first_half = 0
+        over_1_5_first_half_count = 0
 
         for match in h2h_data:
             halftime = match.get("score", {}).get("halftime", {})
-            fulltime = match.get("score", {}).get("fulltime", {})
-            if halftime and fulltime:
-                # Primo tempo
-                home_ht = halftime.get("home", 0) or 0
-                away_ht = halftime.get("away", 0) or 0
-                stats["goals_scored_first_half"].append(home_ht + away_ht)
-                stats["goals_conceded_first_half"].append(away_ht + home_ht)
+            if halftime:
+                total_goals = halftime.get("home", 0) + halftime.get("away", 0)
+                total_goals_first_half += total_goals
+                if total_goals > 1.5:
+                    over_1_5_first_half_count += 1
 
-                # Secondo tempo
-                home_ft = fulltime.get("home", 0) or 0
-                away_ft = fulltime.get("away", 0) or 0
-                second_half = home_ft + away_ft - (home_ht + away_ht)
-                stats["goals_scored_second_half"].append(second_half)
-                stats["goals_conceded_second_half"].append(second_half)
+        games_played = len(h2h_data)
+        h2h_avg_goals = total_goals_first_half / games_played if games_played > 0 else 0
+        h2h_over_1_5 = (over_1_5_first_half_count / games_played) * 100 if games_played > 0 else 0
 
-                # Frequenza di almeno un gol segnato/subito
-                if home_ht + away_ht > 0:
-                    stats["at_least_one_goal_scored_first_half"] += 1
-                if second_half > 0:
-                    stats["at_least_one_goal_scored_second_half"] += 1
-                if home_ht > 0 or away_ht > 0:
-                    stats["at_least_one_goal_scored"] += 1
-                if away_ht > 0:
-                    stats["at_least_one_goal_conceded_first_half"] += 1
-                if second_half > 0:
-                    stats["at_least_one_goal_conceded_second_half"] += 1
-
-        # Calcola le medie
-        stats["avg_goals_scored_first_half"] = statistics.mean(stats["goals_scored_first_half"]) if stats["goals_scored_first_half"] else 0
-        stats["avg_goals_scored_second_half"] = statistics.mean(stats["goals_scored_second_half"]) if stats["goals_scored_second_half"] else 0
-        stats["avg_goals_conceded_first_half"] = statistics.mean(stats["goals_conceded_first_half"]) if stats["goals_conceded_first_half"] else 0
-        stats["avg_goals_conceded_second_half"] = statistics.mean(stats["goals_conceded_second_half"]) if stats["goals_conceded_second_half"] else 0
-
-        print(f"[DEBUG] Statistiche H2H calcolate: {stats}")
-        return stats
+        return {
+            "games_played": games_played,
+            "h2h_avg_goals": h2h_avg_goals,
+            "h2h_over_1_5": h2h_over_1_5
+        }
     except Exception as e:
-        print(f"[ERROR] Errore nell'API H2H: {e}")
-        return {}
+        logging.error(f"Errore durante il recupero delle statistiche H2H: {e}")
+        return {
+            "games_played": 0,
+            "h2h_avg_goals": 0,
+            "h2h_over_1_5": 0
+        }
+
+import functools
+# Cache per i risultati già calcolati
+cache = {}
 
 def calculate_probability(match_id):
+    if match_id in cache:
+        logging.info(f"Utilizzo dei dati in cache per Match ID: {match_id}")
+        return cache[match_id]
+
     try:
-        print(f"[DEBUG] Calcolo probabilità per Match ID: {match_id}")
+        logging.info(f"Calcolo probabilità per Match ID: {match_id}")
         response = requests.get(f"{BASE_URL}fixtures?id={match_id}", headers=HEADERS)
         fixture_data = response.json().get("response", [])
         if not fixture_data:
-            print("[ERROR] Nessuna informazione sulla partita trovata.")
+            logging.error("Nessuna informazione sulla partita trovata.")
             return 0, {}
 
         fixture_data = fixture_data[0]
@@ -171,19 +157,12 @@ def calculate_probability(match_id):
         home_team_id = fixture_data["teams"]["home"]["id"]
         away_team_id = fixture_data["teams"]["away"]["id"]
 
-        # Statistiche primo tempo per entrambe le squadre
         home_avg_goals, home_over_1_5 = get_first_half_stats(home_team_id)
         away_avg_goals, away_over_1_5 = get_first_half_stats(away_team_id)
+        h2h_stats = get_h2h_stats(home_team_id, away_team_id)
 
-        # Controlla se le statistiche sono valide
-        if home_avg_goals == 0 and home_over_1_5 == 0:
-            print("[DEBUG] Nessun dato valido per la squadra di casa, assegnando valori predefiniti.")
-        if away_avg_goals == 0 and away_over_1_5 == 0:
-            print("[DEBUG] Nessun dato valido per la squadra ospite, assegnando valori predefiniti.")
-
-        # Calcola la probabilità finale
-        combined_avg_goals = (home_avg_goals + away_avg_goals) / 2
-        combined_over_1_5 = (home_over_1_5 + away_over_1_5) / 2
+        combined_avg_goals = (home_avg_goals + away_avg_goals + h2h_stats["h2h_avg_goals"]) / 3
+        combined_over_1_5 = (home_over_1_5 + away_over_1_5 + h2h_stats["h2h_over_1_5"]) / 3
         probability = (combined_avg_goals / 1.5) * combined_over_1_5
 
         details = {
@@ -191,12 +170,13 @@ def calculate_probability(match_id):
             "away_team": away_team,
             "home_avg_goals": home_avg_goals,
             "away_avg_goals": away_avg_goals,
-            "home_over_1_5": home_over_1_5,
-            "away_over_1_5": away_over_1_5,
+            "h2h_avg_goals": h2h_stats["h2h_avg_goals"],
+            "h2h_over_1_5": h2h_stats["h2h_over_1_5"]
         }
 
-        print(f"[DEBUG] Dettagli calcolo: {details}")
+        # Salva nel cache
+        cache[match_id] = (probability, details)
         return min(probability, 100), details
     except Exception as e:
-        print(f"[ERROR] Errore nel calcolo della probabilità: {e}")
+        logging.error(f"Errore durante il calcolo della probabilità: {e}")
         return 0, {}
