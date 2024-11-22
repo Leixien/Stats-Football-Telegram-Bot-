@@ -27,6 +27,12 @@ async def squadra_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     try:
         matches = get_team_matches(squadra)
+        if matches == {"error": "API limit exceeded or invalid response"}:
+            await update.message.reply_text(
+                "⚠️ Il limite giornaliero delle richieste API è stato raggiunto o la risposta API non è valida. Non è possibile effettuare ulteriori ricerche oggi. Riprova domani!"
+            )
+            return
+
         logging.info(f"Partite trovate: {matches}")
 
         if matches:
