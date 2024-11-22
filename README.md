@@ -1,26 +1,33 @@
-# ⚽ Football Over/Under Bot 🤖
+# ⚽ Football Stats Bot 🤖
 
-Un bot Telegram per calcolare le probabilità di **Over 1.5 gol nel primo tempo** di partite di calcio. Il bot sfrutta l'API-Football per fornire statistiche affidabili e in tempo reale. 🌍⚡
+Un bot Telegram per calcolare la probabilità di **Over 1.5 gol nel primo tempo** per partite di calcio. Il bot utilizza l'API-Football per ottenere statistiche aggiornate e offre una gestione resiliente degli errori.
 
 ---
 
 ## 📚 Funzionalità
-1. **🔍 Cerca Squadra**: Inserisci il nome di una squadra per visualizzare le prossime partite.
-2. **🗂️ Menu Interattivo**: Scegli una partita da un elenco generato automaticamente.
-3. **📊 Probabilità Calcolata**: Ricevi la probabilità stimata di Over 1.5 gol nel primo tempo.
-4. **🌐 Integrazione API-Football**: Collegamento diretto per dati in tempo reale.
+1. **🔍 Ricerca Squadra**: Inserisci il nome di una squadra per visualizzare le prossime partite.
+2. **🗂️ Menu Interattivo**: Seleziona una partita da un elenco generato automaticamente.
+3. **📊 Analisi Completa**:
+   - Media gol segnati nel primo tempo.
+   - Percentuale di Over 1.5 gol nel primo tempo.
+   - Statistiche sugli scontri diretti (H2H).
+4. **🔄 Resilienza**:
+   - Ritenta automaticamente in caso di errori API.
+   - Gestisce tutte le eccezioni senza interrompere il funzionamento.
 
 ---
 
 ## 🚀 Come Usare il Bot
 
 ### 1️⃣ Prerequisiti
-- **Python 3.7+**
+- **Python 3.8+**
 - **Chiave API-Football**
   - Registrati su [API-Football](https://www.api-football.com/) e copia la tua chiave API.
+- **Token Telegram Bot**
+  - Ottieni il token dal [BotFather](https://core.telegram.org/bots#botfather).
 
 ### 2️⃣ Installazione
 1. Clona il repository:
    ```bash
-   git clone https://github.com/<tuo-username>/football-overunder-bot.git
-   cd football-overunder-bot
+   git clone https://github.com/<tuo-username>/football-stats-bot.git
+   cd football-stats-bot
