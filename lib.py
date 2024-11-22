@@ -4,7 +4,7 @@ import time
 import statistics
 
 # API-Football Config
-API_KEY = "8cf8f82aa36916735cdd00c2a046abd2"  # Inserisci la tua chiave API-Football qui
+API_KEY = "API_KEY"  # Inserisci la tua chiave API-Football qui
 BASE_URL = "https://v3.football.api-sports.io/"
 HEADERS = {
     "x-rapidapi-host": "v3.football.api-sports.io",
