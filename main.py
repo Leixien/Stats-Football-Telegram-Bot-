@@ -14,7 +14,7 @@ logging.basicConfig(
 )
 
 # Bot Telegram Config
-BOT_TOKEN = ""  # Inserisci il tuo token Telegram qui
+BOT_TOKEN = "7620362203:AAG9123-Kp8-DSZRAIUicsRFHxO77-Q5MkE"  # Inserisci il tuo token Telegram qui
 
 # Comando /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
