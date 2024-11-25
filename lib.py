@@ -4,7 +4,7 @@ import time
 import statistics
 
 # API-Football Config
-API_KEY = "8cf8f82aa36916735cdd00c2a046abd2"  # Inserisci la tua chiave API-Football qui
+API_KEY = ""  # Inserisci la tua chiave API-Football qui
 BASE_URL = "https://v3.football.api-sports.io/"
 HEADERS = {
     "x-rapidapi-host": "v3.football.api-sports.io",
@@ -102,8 +102,8 @@ def get_h2h_stats(team1_id, team2_id):
             logging.info("Nessuna partita H2H trovata.")
             return {
                 "games_played": 0,
-                "h2h_avg_goals": 0,
-                "h2h_over_1_5": 0
+                "h2h_avg_goals": 0.0,
+                "h2h_over_1_5": 0.0
             }
 
         total_goals_first_half = 0
@@ -111,15 +111,20 @@ def get_h2h_stats(team1_id, team2_id):
 
         for match in h2h_data:
             halftime = match.get("score", {}).get("halftime", {})
-            if halftime:
-                total_goals = halftime.get("home", 0) + halftime.get("away", 0)
-                total_goals_first_half += total_goals
-                if total_goals > 1.5:
-                    over_1_5_first_half_count += 1
+            home_ht = halftime.get("home", 0) or 0
+            away_ht = halftime.get("away", 0) or 0
+
+            logging.debug(f"Valori halftime: home={home_ht}, away={away_ht}")
+
+            total_goals = home_ht + away_ht
+            total_goals_first_half += total_goals
+
+            if total_goals > 1.5:
+                over_1_5_first_half_count += 1
 
         games_played = len(h2h_data)
-        h2h_avg_goals = total_goals_first_half / games_played if games_played > 0 else 0
-        h2h_over_1_5 = (over_1_5_first_half_count / games_played) * 100 if games_played > 0 else 0
+        h2h_avg_goals = total_goals_first_half / games_played if games_played > 0 else 0.0
+        h2h_over_1_5 = (over_1_5_first_half_count / games_played) * 100 if games_played > 0 else 0.0
 
         return {
             "games_played": games_played,
@@ -130,8 +135,8 @@ def get_h2h_stats(team1_id, team2_id):
         logging.error(f"Errore durante il recupero delle statistiche H2H: {e}")
         return {
             "games_played": 0,
-            "h2h_avg_goals": 0,
-            "h2h_over_1_5": 0
+            "h2h_avg_goals": 0.0,
+            "h2h_over_1_5": 0.0
         }
 
 import functools
@@ -146,6 +151,9 @@ def calculate_probability(match_id):
     try:
         logging.info(f"Calcolo probabilità per Match ID: {match_id}")
         response = requests.get(f"{BASE_URL}fixtures?id={match_id}", headers=HEADERS)
+        if "error" in response:
+            return 0, {}
+
         fixture_data = response.json().get("response", [])
         if not fixture_data:
             logging.error("Nessuna informazione sulla partita trovata.")
@@ -157,22 +165,29 @@ def calculate_probability(match_id):
         home_team_id = fixture_data["teams"]["home"]["id"]
         away_team_id = fixture_data["teams"]["away"]["id"]
 
+        # Statistiche
         home_avg_goals, home_over_1_5 = get_first_half_stats(home_team_id)
         away_avg_goals, away_over_1_5 = get_first_half_stats(away_team_id)
         h2h_stats = get_h2h_stats(home_team_id, away_team_id)
 
-        combined_avg_goals = (home_avg_goals + away_avg_goals + h2h_stats["h2h_avg_goals"]) / 3
-        combined_over_1_5 = (home_over_1_5 + away_over_1_5 + h2h_stats["h2h_over_1_5"]) / 3
-        probability = (combined_avg_goals / 1.5) * combined_over_1_5
+        logging.info(f"Statistiche H2H: {h2h_stats}")
 
+        # Combina i dati
         details = {
             "home_team": home_team,
             "away_team": away_team,
             "home_avg_goals": home_avg_goals,
             "away_avg_goals": away_avg_goals,
+            "games_played": h2h_stats["games_played"],
             "h2h_avg_goals": h2h_stats["h2h_avg_goals"],
             "h2h_over_1_5": h2h_stats["h2h_over_1_5"]
         }
+        logging.debug(f"Dettagli calcolati: {details}")
+
+        # Calcolo della probabilità
+        combined_avg_goals = (home_avg_goals + away_avg_goals + h2h_stats["h2h_avg_goals"]) / 3
+        combined_over_1_5 = (home_over_1_5 + away_over_1_5 + h2h_stats["h2h_over_1_5"]) / 3
+        probability = (combined_avg_goals / 1.5) * combined_over_1_5
 
         # Salva nel cache
         cache[match_id] = (probability, details)

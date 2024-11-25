@@ -14,7 +14,7 @@ logging.basicConfig(
 )
 
 # Bot Telegram Config
-BOT_TOKEN = "7620362203:AAG7kyvMbum0gRkJjYpj-wvpy4s0bXGLaYQ"  # Inserisci il tuo token Telegram qui
+BOT_TOKEN = ""  # Inserisci il tuo token Telegram qui
 
 # Comando /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -66,17 +66,18 @@ async def match_callback_handler(update: Update, context: ContextTypes.DEFAULT_T
             )
             return
 
+        # Invia il messaggio dettagliato
         message = (
             f"📊 **Analisi della partita**:\n\n"
             f"🏠 **Squadra Casa**: {details['home_team']}\n"
             f"🏟️ **Squadra Ospite**: {details['away_team']}\n\n"
             f"⚽ **Statistiche H2H**:\n"
-            f"   - Partite giocate: {details.get('games_played', 0)}\n"
+            f"   - Partite giocate: {details['games_played']}\n"
             f"   - Media gol primo tempo: {details['h2h_avg_goals']:.2f}\n"
             f"   - Percentuale Over 1.5: {details['h2h_over_1_5']:.2f}%\n\n"
             f"🔮 **Probabilità Over 1.5 Gol Primo Tempo**: {probability:.2f}%"
         )
-        await query.edit_message_text(text=message, parse_mode="Markdown")
+        await context.bot.send_message(chat_id=update.effective_chat.id, text=message, parse_mode="Markdown")
 
     except Exception as e:
         logging.error(f"Errore durante il calcolo della probabilità: {e}")
